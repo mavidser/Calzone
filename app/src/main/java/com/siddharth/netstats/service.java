@@ -18,12 +18,12 @@ import java.util.Date;
 
 public class service extends Service
 {
-    boolean first_time = true;
-    String temp1 = "0 KB", temp2 = "0 KB", temp3 = "0 KBPS", temp4 = "0 KBPS", temp5 = "0 KB", temp6 = "0 KB", date;
-    Handler handler=new Handler();
-    long rx, tx, temp_rx, temp_tx, d_offset = 0, u_offset = 0,rx1,tx1,down_speed,up_speed;
-    SQLiteDatabase db;SharedPreferences.Editor editor;
-    SharedPreferences prefs;Time now = new Time();
+    static boolean first_time = true;
+    static String temp1 = "0 KB", temp2 = "0 KB", temp3 = "0 KBPS", temp4 = "0 KBPS", temp5 = "0 KB", temp6 = "0 KB", date;
+    static Handler handler=new Handler();
+    static long rx, tx, temp_rx, temp_tx, d_offset = 0, u_offset = 0,rx1,tx1,down_speed,up_speed;
+    static SQLiteDatabase db;SharedPreferences.Editor editor;
+    static SharedPreferences prefs;Time now = new Time();
 
     @Override
     public IBinder onBind(Intent intent)
@@ -35,6 +35,7 @@ public class service extends Service
     {
         //Toast.makeText(this, "My Service Stopped", Toast.LENGTH_LONG).show();
         //Log.d(TAG, "onDestroy");
+        db.close();
         handler.removeCallbacksAndMessages(null);
     }
 
@@ -92,13 +93,13 @@ public class service extends Service
             //Toast.makeText(this, "My Service Started", Toast.LENGTH_LONG).show();
             //Log.d(TAG, "onStart");
         }
+        db = openOrCreateDatabase("database", Context.MODE_PRIVATE, null);
         prog();
     }
 
     private void prog()
     {
         //open the database
-        db = openOrCreateDatabase("database", Context.MODE_PRIVATE, null);
         db.execSQL("CREATE TABLE IF NOT EXISTS transfer_week('date' VARCHAR NOT NULL UNIQUE,'down_transfer' integer,'up_transfer' integer);");
 
         //get today's date and create entry
@@ -109,7 +110,7 @@ public class service extends Service
         if (c.getCount() == 0)
             db.execSQL("insert into transfer_week values(\"" + date + "\",0,0);");
         c.close();
-        db.close();
+        System.gc();
         handler.postDelayed(runnable, 1000);
     }
 
@@ -118,8 +119,7 @@ public class service extends Service
         @Override
         public void run()
         {
-            System.gc();
-            db = openOrCreateDatabase("database", Context.MODE_PRIVATE, null);
+            //System.gc();
             //intialize fragment at startup
             if (first_time == true)
             {
@@ -154,7 +154,7 @@ public class service extends Service
 
                 //assigning current stat
                 prefs = getApplicationContext().getSharedPreferences("setting", Context.MODE_PRIVATE);
-                 editor = prefs.edit();
+                editor = prefs.edit();
                 if (prefs.getBoolean("do_not_disturb", true) == true)
                 {
                     rx = rx1;
@@ -191,10 +191,9 @@ public class service extends Service
                 }
 
                 db.execSQL("update transfer_week set down_transfer=down_transfer+" + down_speed + " , up_transfer=up_transfer+" + up_speed + " where date = '" + date + "';");
-                db.close();
                 temp=temp1=temp2=temp3=temp4=temp5=temp6=null;
                 //handler.removeCallbacksAndMessages(null);
-                handler.postDelayed(this, 1000);
+                handler.postDelayed(this, 100);
             }
             catch (NullPointerException n)
             {
